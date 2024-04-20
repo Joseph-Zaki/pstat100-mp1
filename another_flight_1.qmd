@@ -1,7 +1,9 @@
 ---
-title: "Report Template"
-author: "ALBERT (6163257)"
-date: "DATE"
+title: "Mini Project 1"
+author: 
+  - ALBERT (albertchui)
+  - Joseph Zaki (josephzaki)
+date: "April 21, 2024"
 format: pdf
 fontsize: 12pt
 number-sections: TRUE
@@ -17,65 +19,48 @@ toc: TRUE
 When writing an academic-style paper, it is important to include an abstract. The abstract is a short, few-line summary of the paper, and should include major findings and conclusions.
 \end{abstract}
 
-```{r}
+```{r, echo = F, results='hide'}
 library("tidyverse")
 library("pander")
 ```
 
-# Section Header {#sec-section1}
+# Data Cleaning and EDA {#sec-section1}
 
-Notice how the section headers are encoded as first-level headers (using a single hashtag \#). It is recommended to use first-level headers for main section headers, second-level headers for subsection headers, etc.
+## Combining Dataframes 
 
-## Subsection 1
-
-For example, we could use this subsection to discuss something specific about the overall topic of @sec-section1. By the way, notice how we managed to include a link to a previous section, using the section tag we created earlier (in the curly braces \{ \}).
-
-# Equations
-
-Equations follow standard LaTeX syntax, like
-$$ \mathbb{E}[X] := \int_{-\infty}^{\infty} x f_X(x) \ \mathrm{d}x $$
-or $f(x) = x^2$.
-
-# Table of Contents
-
-If you would like to remove the table of contents at the start of your report, simply change the value of `toc:` in the YAML header from `TRUE` to `FALSE`. 
-
-# Code
-
-One of the major benefits of using Quarto to generate reports is that we can easily integrate code. For instance:
-```{r}
+```{r, echo = F}
 vector_flight_data <- c("data/CA_Flights_Jan.csv","data/CA_Flights_Feb.csv","data/CA_Flights_Mar.csv","data/CA_Flights_Apr.csv","data/CA_Flights_May.csv","data/CA_Flights_Jun.csv","data/CA_Flights_Jul.csv","data/CA_Flights_Aug.csv","data/CA_Flights_Sept.csv","data/CA_Flights_Oct.csv","data/CA_Flights_Nov.csv","data/CA_Flights_Dec.csv")
 
 list_flight_data <- lapply(vector_flight_data, FUN = read.csv)
 
 flights <- bind_rows(list_flight_data)
 
-```
-
-Packages like `pander` can help render tabular output in slightly nicer formats. For instance, consider the data frame
-
-```{r}
-flights %>% nrow()
-
-# 1267353
-
-flights %>% names()
-# 14 names
-
-flights$OP_UNIQUE_CARRIER %>% unique()
-# AA" "AS" "B6" "DL" "F9" "G4" "HA" "MQ" "NK" "OO" "UA" "WN"
-
-which(is.na(flights))
+flights %>% dim()
 flights[8872282, ]
-
-# missing values are encoded as NA
-
-
 ```
 
-Using `pander`, we could instead have
+After combining the CA Flight Data for each month into a single dataframe called `flights`, we see from the output of `dim(flights)` that this dataset contains 14 variables on 1267353 observational units (flights) listed below. We also see that missing values are encoded as `NA`.
 
-```{r}
+| VARIABLE | DESCRIPTION |
+|----------|:------------|
+|Year|This is the year the flight took place, for this dataset, all values are 2023.|
+|MONTH|This is the month the flight took place represented as numeric values 1-12 for January-December.|
+|DAY_OF_MONTH|This is the day of the month the flight took place represented as numeric values from 1-31.|
+|OP_UNIQUE_CARRIER|This is the airline carrier associated with the flight represented as a two character abbreviation.|
+|ORIGIN|This is the airport of origin for the flight represented as a three character airport code.|
+|DEST|This is the destination airport for the flight represented as a three character airport code.|
+|CRS_DEP_TIME|This is the scheduled departure time of the flight represented in 24-hour time.|
+|DEP_TIME|This is the actual departure time of the flight represented in 24-hour time.|
+|DEP_DELAY|This is the delay in departure time in minutes (DEP_TIME - CRS_DEP_TIME).|
+|CRS_ARR_TIME|This is the scheduled arrival time of the flight represented in 24-hour time.|
+|ARR_TIME|This is the actual arrival time of the flight represented in 24-hour time.|
+|ARR_DELAY|This is the delay in arrival time in minutes (ARR_TIME - CRS_ARR_TIME).|
+|CRS_ELAPSED_TIME|This is the scehduled flight duration in minutes.|
+|ACTUAL_ELAPSED_TIME|This is the actual flight duration in minutes.|
+
+## Add Airport Information
+
+```{r, echo = F}
 airport <- read.csv("data/Airport_Info.csv")
 
 # adding lon and lat airport data to flights 
@@ -87,97 +72,87 @@ flights <- left_join(
   rename("ORIGIN_ARPT_NAME" = "ARPT_NAME", "lon_origin" = "x", "lat_origin" = "y") %>%
   left_join(
     airport, 
-    by =join_by(`DEST` == `ARPT_ID`)
+    by = join_by(`DEST` == `ARPT_ID`)
     ) %>%
   rename("DEST_ARPT_NAME" = "ARPT_NAME", "lon_dest" = "x", "lat_dest" = "y")
 
 # making month data more descriptive
 
-conditions <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-replacement_values <- c("January", "February", 'March', 'April', 'May', 'June', 'July', "August", 'September', 'October', 'November', "December")
+month_names <- factor(month.name, ordered = T, levels = month.name)
 
-# replacement_values <- factor(replacement_values, levels = c("January", "February", 'March', 'April', 'May', 'June', 'July', "August", 'September', 'October', 'November', "December"))
-
-flights$MONTH <- replace(flights$MONTH, flights$MONTH %in% conditions, replacement_values)
+flights$MONTH <-  month_names[flights$MONTH]
 ```
 
+## Explore Santa Barbara Airport
+In this section we explore flights routing through Santa Barabara Airport (SBA). Below is a list of the 119 airports that had flights routed through SBA in 2023 (including SBA).
 
-```{r}
-SBA_flights <-filter(flights, `ORIGIN` == "SBA" | `DEST` == "SBA")
+```{r, echo = F}
+SBA_flights <- filter(flights, `ORIGIN` == "SBA" | `DEST` == "SBA")
 
 origin_SBA <- flights$ORIGIN_ARPT_NAME %>% unique()
 dest_SBA <- flights$DEST_ARPT_NAME %>% unique()
 
-unique_flights_SBA <- c(origin_SBA, dest_SBA)
-unique_flights_SBA <- unique_flights_SBA %>% unique()
-
+unique_flights_SBA <- c(origin_SBA, dest_SBA) %>% unique()
+sort(unique_flights_SBA)
 ```
 
-
-```{r}
+Below is a map of these airports with SBA highlighted in red.
+```{r, echo = F, warning=F}
 states <- map_data("state")
-SBA_flights %>% nrow()
-SBA_flights$ID <- seq.int(nrow(SBA_flights))
-#taken from google stackoverflow to number rows
-# there are 14403 rows. How do i color lines?
 
-arrive <- select(SBA_flights, "ID", x = "lon_dest", y = "lat_dest", MONTH = "MONTH")
-dept <- select(SBA_flights, "ID", x = "lon_origin", y = "lat_origin", MONTH = "MONTH")
+SBA_plotting <- data.frame(ARPT_NAME = unique_flights_SBA) %>% 
+  left_join(
+    airport,
+    by = join_by(
+      `ARPT_NAME` == `ARPT_NAME`
+    )
+  ) %>%
+  rename("longitude" = x, "latitude" = y)
 
-
-o_d_flights <- rbind(dept, arrive)
-
-
-
-ggplot() +
+ggplot(data = SBA_plotting) +
   geom_polygon(data = states,
                aes(x = long, y = lat, group = group),
                fill = "grey90",
                colour = "grey50") +
   coord_quickmap() +
-  theme_minimal()+ 
-  geom_point(data = o_d_flights, aes(x = x, y = y, group = ID))+
-  geom_line(data = o_d_flights, aes(x =x, y =y, group = ID, col = MONTH))
+  theme_minimal() +
+  geom_point(
+    aes(x = longitude, y = latitude)
+  ) +
+  geom_point(data = filter(SBA_plotting, ARPT_ID == "SBA"),
+             aes(x = longitude, y= latitude, col = 'red')) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme(legend.position = 'None')
 
 ```
 
 
-```{r}
-```
-
-```{r}
-MONTH_count <- SBA_flights%>%
+By plotting the number of flights routing through SBA each month, we can see that the winter months of December through February are typically the slowest, while the late summer and early fall months of August, Septemeber and October are busiest.
+```{r, fig.width= 10, echo = F}
+MONTH_count <- SBA_flights %>%
   group_by(MONTH) %>%
-  count()
+  summarise(n = n())
+
 ggplot(MONTH_count, aes(MONTH, n)) +
-  geom_point()
+  geom_point() +
+  geom_line(aes(as.numeric(MONTH), n)) +
+  labs(title = 'Flights per Month', x = 'Month', y = 'No. of Flights')
 ```
 
 
-
-```{r}
-SBA_facet1 <- SBA_flights %>%
-  group_by(MONTH) %>%
-  filter(`ORIGIN` == "SBA") %>%
-  count()
-
-SBA_facet2 <- SBA_flights %>%
-  group_by(MONTH) %>%
-  filter(`DEST` == "SBA") %>%
-  count()
-
-SBA_facet1$ID <- "ORIGIN SBA"
-SBA_facet2$ID <- "DEST SBA"
-
-SBA_facet <- rbind(SBA_facet1, SBA_facet2)
-
-SBA_facet %>%
-  ggplot(aes(x = MONTH, y = n)) + 
+By separating this information over two separate graphs, one for arrival and one for departure, we see that there are exactly the same amounts of flights arriving as departing.
+```{r, echo = F, fig.width= 10, warning=F}
+SBA_flights %>%
+  mutate(ORIGIN_OR_DEST = ifelse(ORIGIN == "SBA", "Departing from SBA", "Arriving in SBA")) %>%
+  group_by(MONTH, ORIGIN_OR_DEST) %>%
+  summarise(num_flights = n()) %>%
+  ggplot(aes(x = MONTH, y = num_flights)) + 
   geom_point() +
-  facet_wrap("ID") +
+  geom_line(aes(as.numeric(MONTH), num_flights))+
+  facet_wrap("ORIGIN_OR_DEST") +
+  labs(title = "Flights per Month split by Arrival or Departure in SBA", x = "Month", y = "No. of Flights") +
   theme(
     axis.text.x = element_text(angle = 20))
-
 ```
 
 
