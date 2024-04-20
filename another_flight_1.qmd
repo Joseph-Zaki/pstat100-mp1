@@ -1,0 +1,279 @@
+---
+title: "Report Template"
+author: "ALBERT (6163257)"
+date: "DATE"
+format: pdf
+fontsize: 12pt
+number-sections: TRUE
+linkcolor: purple
+geometry:
+  - margin=1in
+toc: TRUE
+---
+
+# Abstract {#sec-abstract}
+
+\begin{abstract}
+When writing an academic-style paper, it is important to include an abstract. The abstract is a short, few-line summary of the paper, and should include major findings and conclusions.
+\end{abstract}
+
+```{r}
+library("tidyverse")
+library("pander")
+```
+
+# Section Header {#sec-section1}
+
+Notice how the section headers are encoded as first-level headers (using a single hashtag \#). It is recommended to use first-level headers for main section headers, second-level headers for subsection headers, etc.
+
+## Subsection 1
+
+For example, we could use this subsection to discuss something specific about the overall topic of @sec-section1. By the way, notice how we managed to include a link to a previous section, using the section tag we created earlier (in the curly braces \{ \}).
+
+# Equations
+
+Equations follow standard LaTeX syntax, like
+$$ \mathbb{E}[X] := \int_{-\infty}^{\infty} x f_X(x) \ \mathrm{d}x $$
+or $f(x) = x^2$.
+
+# Table of Contents
+
+If you would like to remove the table of contents at the start of your report, simply change the value of `toc:` in the YAML header from `TRUE` to `FALSE`. 
+
+# Code
+
+One of the major benefits of using Quarto to generate reports is that we can easily integrate code. For instance:
+```{r}
+vector_flight_data <- c("data/CA_Flights_Jan.csv","data/CA_Flights_Feb.csv","data/CA_Flights_Mar.csv","data/CA_Flights_Apr.csv","data/CA_Flights_May.csv","data/CA_Flights_Jun.csv","data/CA_Flights_Jul.csv","data/CA_Flights_Aug.csv","data/CA_Flights_Sept.csv","data/CA_Flights_Oct.csv","data/CA_Flights_Nov.csv","data/CA_Flights_Dec.csv")
+
+list_flight_data <- lapply(vector_flight_data, FUN = read.csv)
+
+flights <- bind_rows(list_flight_data)
+
+```
+
+Packages like `pander` can help render tabular output in slightly nicer formats. For instance, consider the data frame
+
+```{r}
+flights %>% nrow()
+
+# 1267353
+
+flights %>% names()
+# 14 names
+
+flights$OP_UNIQUE_CARRIER %>% unique()
+# AA" "AS" "B6" "DL" "F9" "G4" "HA" "MQ" "NK" "OO" "UA" "WN"
+
+which(is.na(flights))
+flights[8872282, ]
+
+# missing values are encoded as NA
+
+
+```
+
+Using `pander`, we could instead have
+
+```{r}
+airport <- read.csv("data/Airport_Info.csv")
+
+# adding lon and lat airport data to flights 
+flights <- left_join(
+   flights, 
+   airport, 
+  by = join_by(`ORIGIN` == `ARPT_ID`)
+) %>%
+  rename("ORIGIN_ARPT_NAME" = "ARPT_NAME", "lon_origin" = "x", "lat_origin" = "y") %>%
+  left_join(
+    airport, 
+    by =join_by(`DEST` == `ARPT_ID`)
+    ) %>%
+  rename("DEST_ARPT_NAME" = "ARPT_NAME", "lon_dest" = "x", "lat_dest" = "y")
+
+# making month data more descriptive
+
+conditions <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+replacement_values <- c("January", "February", 'March', 'April', 'May', 'June', 'July', "August", 'September', 'October', 'November', "December")
+
+# replacement_values <- factor(replacement_values, levels = c("January", "February", 'March', 'April', 'May', 'June', 'July', "August", 'September', 'October', 'November', "December"))
+
+flights$MONTH <- replace(flights$MONTH, flights$MONTH %in% conditions, replacement_values)
+```
+
+
+```{r}
+SBA_flights <-filter(flights, `ORIGIN` == "SBA" | `DEST` == "SBA")
+
+origin_SBA <- flights$ORIGIN_ARPT_NAME %>% unique()
+dest_SBA <- flights$DEST_ARPT_NAME %>% unique()
+
+unique_flights_SBA <- c(origin_SBA, dest_SBA)
+unique_flights_SBA <- unique_flights_SBA %>% unique()
+
+```
+
+
+```{r}
+states <- map_data("state")
+SBA_flights %>% nrow()
+SBA_flights$ID <- seq.int(nrow(SBA_flights))
+#taken from google stackoverflow to number rows
+# there are 14403 rows. How do i color lines?
+
+arrive <- select(SBA_flights, "ID", x = "lon_dest", y = "lat_dest", MONTH = "MONTH")
+dept <- select(SBA_flights, "ID", x = "lon_origin", y = "lat_origin", MONTH = "MONTH")
+
+
+o_d_flights <- rbind(dept, arrive)
+
+
+
+ggplot() +
+  geom_polygon(data = states,
+               aes(x = long, y = lat, group = group),
+               fill = "grey90",
+               colour = "grey50") +
+  coord_quickmap() +
+  theme_minimal()+ 
+  geom_point(data = o_d_flights, aes(x = x, y = y, group = ID))+
+  geom_line(data = o_d_flights, aes(x =x, y =y, group = ID, col = MONTH))
+
+```
+
+
+```{r}
+```
+
+```{r}
+MONTH_count <- SBA_flights%>%
+  group_by(MONTH) %>%
+  count()
+ggplot(MONTH_count, aes(MONTH, n)) +
+  geom_point()
+```
+
+
+
+```{r}
+SBA_facet1 <- SBA_flights %>%
+  group_by(MONTH) %>%
+  filter(`ORIGIN` == "SBA") %>%
+  count()
+
+SBA_facet2 <- SBA_flights %>%
+  group_by(MONTH) %>%
+  filter(`DEST` == "SBA") %>%
+  count()
+
+SBA_facet1$ID <- "ORIGIN SBA"
+SBA_facet2$ID <- "DEST SBA"
+
+SBA_facet <- rbind(SBA_facet1, SBA_facet2)
+
+SBA_facet %>%
+  ggplot(aes(x = MONTH, y = n)) + 
+  geom_point() +
+  facet_wrap("ID") +
+  theme(
+    axis.text.x = element_text(angle = 20))
+
+```
+
+
+
+
+
+```{r}
+# SBA_flights %>%
+dept_SBA <- filter(SBA_flights, `ORIGIN` == "SBA") %>%
+  group_by(MONTH) %>%
+  summarise(ORIGIN_SBA = n())
+arrive_SBA <- filter(SBA_flights, `DEST` == "SBA") %>%
+  group_by(MONTH) %>%
+  summarise(DEST_SBA = n()) 
+
+dept_SBA$DEST_SBA <- arrive_SBA$DEST_SBA
+arrive_dept_SBA <- dept_SBA
+
+arrive_dept_SBA$SAME <- FALSE
+
+arrive_dept_SBA$SAME <- replace(arrive_dept_SBA$SAME, arrive_dept_SBA$ORIGIN_SBA == arrive_dept_SBA$DEST_SBA, TRUE)
+
+arrive_dept_SBA
+```
+
+
+we want the distribution of arriving flights. how do you do it normally?
+
+```{r}
+temp <- SBA_flights
+temp$DEST <- paste(temp$DEST, "DEST")
+
+ggplot() +
+  geom_boxplot(
+    data = SBA_flights, aes(x = `ORIGIN`, y = `ACTUAL_ELAPSED_TIME`)) +
+  geom_boxplot(
+    data = temp, aes(x = `DEST`, y = `ACTUAL_ELAPSED_TIME`, fill = `YEAR`)) +
+  theme(
+    axis.text.x = element_text(angle = 20)
+  )
+```
+```{r}
+SBA_flights %>%
+  ggplot(aes(CRS_DEP_TIME, DEP_DELAY))+
+  geom_point()
+```
+look accross destination airports
+there is no relationship at all.
+```{r}
+SBA_flights %>%
+  ggplot(aes(CRS_DEP_TIME, DEP_DELAY, shape = DEST))+
+  geom_point() +
+  scale_y_log10()
+  
+```
+
+we can see this a bit easier using facet wrap.
+```{r}
+SBA_flights %>%
+  ggplot(aes(CRS_DEP_TIME, DEP_DELAY, shape = DEST))+
+  geom_point() +
+  scale_y_log10() +
+  facet_wrap("DEST")
+
+```
+
+
+```{r}
+dep_flights <- flights %>%
+  group_by(`DEP_TIME`) %>%
+  count()
+
+ggplot(dep_flights, aes(DEP_TIME, n)) +
+  geom_line()
+
+```
+
+
+```{r}
+arr_flights <- flights %>%
+  group_by(`ARR_TIME`) %>%
+  count()
+
+ggplot(arr_flights, aes(ARR_TIME, n)) +
+  geom_line()
+
+
+```
+
+```{r}
+median_arr <- flights %>%
+  group_by(`MONTH`) %>%
+  summarise(med = median(ARR_DELAY, na.rm = TRUE))
+
+
+median_dep <- flights %>%
+  group_by(`MONTH`) %>%
+  summarise(med = median(DEP_DELAY, na.rm = TRUE))
+```
