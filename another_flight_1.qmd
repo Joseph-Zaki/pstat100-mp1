@@ -1,7 +1,7 @@
 ---
 title: "Mini Project 1"
 author: 
-  - ALBERT (albertchui)
+  - Albert Chui (albertchui)
   - Joseph Zaki (josephzaki)
 date: "April 21, 2024"
 format: pdf
@@ -27,7 +27,7 @@ library("pander")
 # Data Cleaning and EDA {#sec-section1}
 
 ## Combining Dataframes 
-
+Result of `dim(flights)`:
 ```{r, echo = F}
 vector_flight_data <- c("data/CA_Flights_Jan.csv","data/CA_Flights_Feb.csv","data/CA_Flights_Mar.csv","data/CA_Flights_Apr.csv","data/CA_Flights_May.csv","data/CA_Flights_Jun.csv","data/CA_Flights_Jul.csv","data/CA_Flights_Aug.csv","data/CA_Flights_Sept.csv","data/CA_Flights_Oct.csv","data/CA_Flights_Nov.csv","data/CA_Flights_Dec.csv")
 
@@ -36,14 +36,15 @@ list_flight_data <- lapply(vector_flight_data, FUN = read.csv)
 flights <- bind_rows(list_flight_data)
 
 flights %>% dim()
-flights[8872282, ]
 ```
 
-After combining the CA Flight Data for each month into a single dataframe called `flights`, we see from the output of `dim(flights)` that this dataset contains 14 variables on 1267353 observational units (flights) listed below. We also see that missing values are encoded as `NA`.
+After combining the CA Flight Data for each month into a single dataframe called `flights`, we see from the output of `dim(flights)` that this dataset contains 14 variables on 1,267,353 observational units (flights) listed below. We also see that missing values are encoded as `NA`.
+
+The table below describes each column of our `flights` dataframe:
 
 | VARIABLE | DESCRIPTION |
 |----------|:------------|
-|Year|This is the year the flight took place, for this dataset, all values are 2023.|
+|YEAR|This is the year the flight took place, for this dataset, all values are 2023.|
 |MONTH|This is the month the flight took place represented as numeric values 1-12 for January-December.|
 |DAY_OF_MONTH|This is the day of the month the flight took place represented as numeric values from 1-31.|
 |OP_UNIQUE_CARRIER|This is the airline carrier associated with the flight represented as a two character abbreviation.|
@@ -59,7 +60,18 @@ After combining the CA Flight Data for each month into a single dataframe called
 |ACTUAL_ELAPSED_TIME|This is the actual flight duration in minutes.|
 
 ## Add Airport Information
+In addition to the data found in `flights`, we have information about each airport stored in `Airport_Info.csv`. By merging these data sets, we can easily reference airport information and flight information from one place. Merging these data sets leads to the following columns being added to `flights`:
 
+| VARIABLE | DESCRIPTION |
+|----------|:------------|
+|ORIGIN_ARPT_NAME|This is the full name of the airport of origin for the flight.|
+|lon_origin|This is the longitudinal coordinate for the flight's airport of origin.|
+|lat_origin|This is the latitudinal coordinate for the flight's airport of origin.|
+|DEST_ARPT_NAME|This is the full name of the destination airport for the flight.|
+|lon_dest|This is the longitudinal coordinate for the flight's destination airport.|
+|lat_dest|This is the latitudinal coordinate for the flight's destination airport.|
+
+We have also altered the `MONTH` column to represent months as their full names rather than integers (e.g. "January" instead of 1).
 ```{r, echo = F}
 airport <- read.csv("data/Airport_Info.csv")
 
@@ -84,19 +96,17 @@ flights$MONTH <-  month_names[flights$MONTH]
 ```
 
 ## Explore Santa Barbara Airport
-In this section we explore flights routing through Santa Barabara Airport (SBA). Below is a list of the 119 airports that had flights routed through SBA in 2023 (including SBA).
+In this section, we explore flights routing through Santa Barabara Airport (SBA). Below is a list of the 10 airports that had flights routed through SBA in 2023 along with a map of these airports with SBA in red.
 
 ```{r, echo = F}
 SBA_flights <- filter(flights, `ORIGIN` == "SBA" | `DEST` == "SBA")
 
-origin_SBA <- flights$ORIGIN_ARPT_NAME %>% unique()
-dest_SBA <- flights$DEST_ARPT_NAME %>% unique()
+origin_SBA <- SBA_flights$ORIGIN_ARPT_NAME %>% unique()
+dest_SBA <- SBA_flights$DEST_ARPT_NAME %>% unique()
 
 unique_flights_SBA <- c(origin_SBA, dest_SBA) %>% unique()
-sort(unique_flights_SBA)
+sort(unique_flights_SBA)[-10]
 ```
-
-Below is a map of these airports with SBA highlighted in red.
 ```{r, echo = F, warning=F}
 states <- map_data("state")
 
@@ -127,7 +137,7 @@ ggplot(data = SBA_plotting) +
 ```
 
 
-By plotting the number of flights routing through SBA each month, we can see that the winter months of December through February are typically the slowest, while the late summer and early fall months of August, Septemeber and October are busiest.
+By plotting the number of flights routing through SBA each month, we can see that the winter months of December, January, and February are typically the slowest, while the late summer and early fall months of August, September and October are busiest.
 ```{r, fig.width= 10, echo = F}
 MONTH_count <- SBA_flights %>%
   group_by(MONTH) %>%
@@ -140,12 +150,12 @@ ggplot(MONTH_count, aes(MONTH, n)) +
 ```
 
 
-By separating this information over two separate graphs, one for arrival and one for departure, we see that there are exactly the same amounts of flights arriving as departing.
+Separating this information over two separate graphs, one for arrival and one for departure, reveals that there are the same amounts of flights arriving as departing in each month meaning the flights follow the same seasonal patterns as we identified when the arrivals and departures were combined.
 ```{r, echo = F, fig.width= 10, warning=F}
 SBA_flights %>%
   mutate(ORIGIN_OR_DEST = ifelse(ORIGIN == "SBA", "Departing from SBA", "Arriving in SBA")) %>%
   group_by(MONTH, ORIGIN_OR_DEST) %>%
-  summarise(num_flights = n()) %>%
+  summarise(num_flights = n(), .groups = 'drop') %>%
   ggplot(aes(x = MONTH, y = num_flights)) + 
   geom_point() +
   geom_line(aes(as.numeric(MONTH), num_flights))+
@@ -153,68 +163,99 @@ SBA_flights %>%
   labs(title = "Flights per Month split by Arrival or Departure in SBA", x = "Month", y = "No. of Flights") +
   theme(
     axis.text.x = element_text(angle = 20))
-```
-
-
-
-
-
-```{r}
-# SBA_flights %>%
-dept_SBA <- filter(SBA_flights, `ORIGIN` == "SBA") %>%
-  group_by(MONTH) %>%
-  summarise(ORIGIN_SBA = n())
-arrive_SBA <- filter(SBA_flights, `DEST` == "SBA") %>%
-  group_by(MONTH) %>%
-  summarise(DEST_SBA = n()) 
-
-dept_SBA$DEST_SBA <- arrive_SBA$DEST_SBA
-arrive_dept_SBA <- dept_SBA
-
-arrive_dept_SBA$SAME <- FALSE
-
-arrive_dept_SBA$SAME <- replace(arrive_dept_SBA$SAME, arrive_dept_SBA$ORIGIN_SBA == arrive_dept_SBA$DEST_SBA, TRUE)
-
-arrive_dept_SBA
-```
-
-
-we want the distribution of arriving flights. how do you do it normally?
-
-```{r}
-temp <- SBA_flights
-temp$DEST <- paste(temp$DEST, "DEST")
-
-ggplot() +
-  geom_boxplot(
-    data = SBA_flights, aes(x = `ORIGIN`, y = `ACTUAL_ELAPSED_TIME`)) +
-  geom_boxplot(
-    data = temp, aes(x = `DEST`, y = `ACTUAL_ELAPSED_TIME`, fill = `YEAR`)) +
-  theme(
-    axis.text.x = element_text(angle = 20)
-  )
-```
-```{r}
-SBA_flights %>%
-  ggplot(aes(CRS_DEP_TIME, DEP_DELAY))+
-  geom_point()
-```
-look accross destination airports
-there is no relationship at all.
-```{r}
-SBA_flights %>%
-  ggplot(aes(CRS_DEP_TIME, DEP_DELAY, shape = DEST))+
-  geom_point() +
-  scale_y_log10()
   
 ```
 
-we can see this a bit easier using facet wrap.
-```{r}
+By graphing the distributions of flights routed through SBA in side by side box plots and separating them based on whether they are departing from or arriving in Santa Barbara, we observe that there is a difference in distributions for flights travelling to or from the Eastern United States. In this dataset, only two airports far to the East of Santa Barbara have flights that route through SBA. These airports are Denver International Airport (DEN) and Dallas Fort Worth International Airport (DFW). For both of these airports, flights departing from SBA and travelling East have much shorter flight durations than those travelling West to SBA. This is possibly due to the [jetstreams](https://www.noaa.gov/jetstream/global/jet-stream) that travel Eastward which allow for higher airspeeds when travelling West to East.
+```{r, echo = F, warning = F, fig.width = 10, fig.height = 5}
 SBA_flights %>%
-  ggplot(aes(CRS_DEP_TIME, DEP_DELAY, shape = DEST))+
+  mutate(ORIGIN_OR_DEST = ifelse(ORIGIN == "SBA", "Departing from SBA", "Arriving in SBA"), other_airport = ifelse(ORIGIN == "SBA", DEST, ORIGIN)) %>%
+  ggplot(aes(x = other_airport,
+             y = ACTUAL_ELAPSED_TIME,
+             fill = ORIGIN_OR_DEST)) +
+  geom_boxplot(staplewidth = 0.5)+
+  theme_minimal(base_size = 12) +
+  labs(x = "Airport", 
+       y = "Flight Duration in Minutes", 
+       title = "Distributions of Flight Durations by Airport", 
+       subtitle = "Grouped by Arrival in/Departure from SBA",
+       fill = "Arriving or Departing")
+```
+### Investigate Delays
+
+First, we examine the distributions of flight departure delays by airline. From the below box plots, we see that it is significantly more common for flights to depart after their scheduled departure time rather than before, which is expected. Additionally, we see that the median departure delays do not vary much from airline to airline, which we can confirm with the table below. The table also indicates that on average, flights across all airlines tend to depart before their scheduled time. Also from the box plot, we can see that Envoy Air was most likely to have flights depart on time, while American Airlines, Southwest Airlines, and United Airlines were most likely to have a flight depart late.
+```{r, warning = F, echo=F, fig.width = 10}
+carrier_codes <- read.csv("data/Carrier_Codes.csv")
+SBA_flights_w_Airline <- SBA_flights %>%
+  left_join(
+    carrier_codes,
+    by = join_by(
+      OP_UNIQUE_CARRIER == Code
+    )
+  ) %>%
+  rename(Airline = Description)
+
+SBA_flights_w_Airline %>%
+  ggplot(aes(x = Airline,
+             y = DEP_DELAY)) +
+  geom_boxplot(staplewidth = 0.25) +
+  ylim(-50,300) +
+  labs(x = "Airline", y = "Departure Delay in minutes", title = "Distribution of Departure Delays by Airline") +
+  theme_minimal(base_size = 12)
+
+SBA_flights_w_Airline %>%
+  group_by(Airline) %>%
+  summarise("Median Departure Delay" = median(DEP_DELAY, na.rm = T)) %>%
+  pander()
+```
+
+Next, we examine the relationship between Arrival Delays and Departure Delays. From this plot, we see that for all airlines, the median Departure Delay is greater than the median Arrival delay. This may indicate that most causes of delay occur before takeoff and could include late passengers or crew members, mechanical issues, weather restrictions on takeoffs, etc. Furthermore, the fact that all airlines show a longer box plot for arrival delays than departure delays indicates that although the average (median) flight will arrive ahead of schedule, there is greater variance in the punctuality of flights once they have taken off.
+```{r, warning = F, echo=F, fig.width = 10}
+SBA_flights_w_Airline %>%
+  select(Airline, DEP_DELAY, ARR_DELAY) %>%
+  melt(
+    id.vars = "Airline",
+    variable.name = "Delay Type",
+    value.name = "DELAY_AMT"
+  ) %>%
+  mutate("Delay Type" = ifelse(`Delay Type` == "DEP_DELAY", "Departure", "Arrival")) %>%
+  ggplot(aes(
+    x = Airline,
+    y = DELAY_AMT,
+    fill = `Delay Type`
+  )) + 
+  geom_boxplot(staplewidth = 0.25) +
+  ylim(-50,300) +
+  labs(x = "Airline", y = "Delay in minutes", 
+       title = "Distribution of Delays by Airline",
+       subtitle = "Grouped by Arrival or Departure Delay") +
+  theme_minimal(base_size = 12) + 
+  theme(
+    axis.text.x = element_text(angle = 20))
+```
+
+By plotting departure delays against scheduled departure time for flights we see that there isn't a very strong association between scheduled departure time and departure delay for flights leaving SBA. However, we see that many relatively short delays occur in the middle of the day between 11:00 AM and 7:00 PM. In contrast, there are fewer, but larger delays in the early morning hours between 12:30 AM and 2:00 AM.
+```{r, warning = F, echo = F}
+SBA_flights_w_Airline %>%
+  filter(DEP_DELAY > 0, ORIGIN == "SBA") %>%
+  ggplot(aes(CRS_DEP_TIME, DEP_DELAY))+
   geom_point() +
-  scale_y_log10() +
+  theme_minimal() +
+  labs(x = "Scheduled Departure Time", y = "Departure Delay",
+       title = "Departure Delay vs Scheduled Departure Time for Flights Departing SBA")
+  
+```
+
+We can more clearly examine this by separating the flights by destination: 
+```{r, echo = F, fig.width=10}
+SBA_flights_w_Airline %>%
+  filter(DEP_DELAY > 0, ORIGIN == "SBA") %>%
+  ggplot(aes(CRS_DEP_TIME, DEP_DELAY))+
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Scheduled Departure Time", y = "Departure Delay",
+       title = "Departure Delay vs Scheduled Departure Time for Flights Departing SBA",
+       subtitle = "Separated By Destination") +
   facet_wrap("DEST")
 
 ```
