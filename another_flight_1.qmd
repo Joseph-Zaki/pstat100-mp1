@@ -16,18 +16,16 @@ toc: TRUE
 # Abstract {#sec-abstract}
 
 \begin{abstract}
-When writing an academic-style paper, it is important to include an abstract. The abstract is a short, few-line summary of the paper, and should include major findings and conclusions.
+In this paper we explore data from the United States Bureau of Transportation Statistics detailing 1,267,353 domestic flights routed through California in 2023. First, we explored flights routed through Santa Barbara Airport (SBA). We identified seasonal highs in flight counts occurring between August and October while seasonal lows occurred between December and February. We also observed what may be the effects of jetstreams in the atmosphere which led to East-bound flights having shorter durations than West-bound flights. In exmainig the entire dataset, we identified the distributions of flight departure and arrival times in order to observe the most and least common flight times. Last, we compared departure and arrival delays across the months of the year finding that March and June had the highest median arrival and departure delays.
 \end{abstract}
 
-```{r, echo = F, results='hide'}
+```{r, echo = F, results='hide', include=F}
 library("tidyverse")
 library("pander")
 library("reshape2")
 ```
 
-# Data Cleaning and EDA {#sec-section1}
-
-## Combining Dataframes 
+# Combining Dataframes 
 Result of `dim(flights)`:
 ```{r, echo = F}
 vector_flight_data <- c("data/CA_Flights_Jan.csv","data/CA_Flights_Feb.csv","data/CA_Flights_Mar.csv","data/CA_Flights_Apr.csv","data/CA_Flights_May.csv","data/CA_Flights_Jun.csv","data/CA_Flights_Jul.csv","data/CA_Flights_Aug.csv","data/CA_Flights_Sept.csv","data/CA_Flights_Oct.csv","data/CA_Flights_Nov.csv","data/CA_Flights_Dec.csv")
@@ -60,7 +58,7 @@ The table below describes each column of our `flights` dataframe:
 |CRS_ELAPSED_TIME|This is the scehduled flight duration in minutes.|
 |ACTUAL_ELAPSED_TIME|This is the actual flight duration in minutes.|
 
-## Add Airport Information
+# Add Airport Information
 In addition to the data found in `flights`, we have information about each airport stored in `Airport_Info.csv`. By merging these data sets, we can easily reference airport information and flight information from one place. Merging these data sets leads to the following columns being added to `flights`:
 
 | VARIABLE | DESCRIPTION |
@@ -96,7 +94,7 @@ month_names <- factor(month.name, ordered = T, levels = month.name)
 flights$MONTH <-  month_names[flights$MONTH]
 ```
 
-## Explore Santa Barbara Airport
+# Explore Santa Barbara Airport
 In this section, we explore flights routing through Santa Barabara Airport (SBA). Below is a list of the 10 airports that had flights routed through SBA in 2023 along with a map of these airports with SBA in red.
 
 ```{r, echo = F}
@@ -164,10 +162,9 @@ SBA_flights %>%
   labs(title = "Flights per Month split by Arrival or Departure in SBA", x = "Month", y = "No. of Flights") +
   theme(
     axis.text.x = element_text(angle = 20))
-  
 ```
 
-By graphing the distributions of flights routed through SBA in side by side box plots and separating them based on whether they are departing from or arriving in Santa Barbara, we observe that there is a difference in distributions for flights travelling to or from the Eastern United States. In this dataset, only two airports far to the East of Santa Barbara have flights that route through SBA. These airports are Denver International Airport (DEN) and Dallas Fort Worth International Airport (DFW). For both of these airports, flights departing from SBA and travelling East have much shorter flight durations than those travelling West to SBA. This is possibly due to the [jetstreams](https://www.noaa.gov/jetstream/global/jet-stream) that travel Eastward which allow for higher airspeeds when travelling West to East.
+By graphing the distributions of flights routed through SBA in side by side box plots and separating them based on whether they are departing from or arriving in Santa Barbara, we observe that there is a difference in distributions for flights travelling to or from the Eastern United States. In this dataset, only two airports far to the East of Santa Barbara have flights that route through SBA. These airports are Denver International Airport (DEN) and Dallas Fort Worth International Airport (DFW). For both of these airports, flights departing from SBA and travelling East have much shorter flight durations than those travelling West to SBA. This is possibly due to the jetstreams^[https://www.noaa.gov/jetstream/global/jet-stream] that travel Eastward which allow for higher airspeeds when travelling West to East.
 ```{r, echo = F, warning = F, fig.width = 10, fig.height = 5}
 SBA_flights %>%
   mutate(ORIGIN_OR_DEST = ifelse(ORIGIN == "SBA", "Departing from SBA", "Arriving in SBA"), other_airport = ifelse(ORIGIN == "SBA", DEST, ORIGIN)) %>%
@@ -182,10 +179,10 @@ SBA_flights %>%
        subtitle = "Grouped by Arrival in/Departure from SBA",
        fill = "Arriving or Departing")
 ```
-### Investigate Delays
+## Investigate Delays
 
 First, we examine the distributions of flight departure delays by airline. From the below box plots, we see that it is significantly more common for flights to depart after their scheduled departure time rather than before, which is expected. Additionally, we see that the median departure delays do not vary much from airline to airline, which we can confirm with the table below. The table also indicates that on average, flights across all airlines tend to depart before their scheduled time. Also from the box plot, we can see that Envoy Air was most likely to have flights depart on time, while American Airlines, Southwest Airlines, and United Airlines were most likely to have a flight depart late.
-```{r, warning = F, echo=F, fig.width = 10}
+```{r, warning = F, echo=F, fig.width = 10, fig.height=10}
 carrier_codes <- read.csv("data/Carrier_Codes.csv")
 SBA_flights_w_Airline <- SBA_flights %>%
   left_join(
@@ -211,7 +208,7 @@ SBA_flights_w_Airline %>%
 ```
 
 Next, we examine the relationship between Arrival Delays and Departure Delays. From this plot, we see that for all airlines, the median Departure Delay is greater than the median Arrival delay. This may indicate that most causes of delay occur before takeoff and could include late passengers or crew members, mechanical issues, weather restrictions on takeoffs, etc. Furthermore, the fact that all airlines show a longer box plot for arrival delays than departure delays indicates that although the average (median) flight will arrive ahead of schedule, there is greater variance in the punctuality of flights once they have taken off.
-```{r, warning = F, echo=F, fig.width = 10}
+```{r, warning = F, echo=F, fig.width = 10, fig.height=10}
 SBA_flights_w_Airline %>%
   select(Airline, DEP_DELAY, ARR_DELAY) %>%
   melt(
@@ -235,7 +232,7 @@ SBA_flights_w_Airline %>%
     axis.text.x = element_text(angle = 20))
 ```
 
-By plotting departure delays against scheduled departure time for flights we see that there isn't a very strong association between scheduled departure time and departure delay for flights leaving SBA. However, we see that many relatively short delays occur in the middle of the day between 11:00 AM and 7:00 PM. In contrast, there are fewer, but larger delays in the early morning hours between 12:30 AM and 2:00 AM.
+By plotting departure delays against scheduled departure time for flights we see that there isn't a very strong association between scheduled departure time and departure delay for flights leaving SBA. However, we see that many relatively short delays occur in the middle of the day between 11:00 AM and 7:00 PM. In contrast, there are fewer, but larger delays in the early morning hours between 5:00 AM and 7:00 AM. By splitting this scatter plot into a separate visual for each airport, we can see that his behavior arises largely due to flights with specific destinations consistently leaving at the same time tend to have delays.
 ```{r, warning = F, echo = F}
 SBA_flights_w_Airline %>%
   filter(DEP_DELAY > 0, ORIGIN == "SBA") %>%
@@ -243,12 +240,12 @@ SBA_flights_w_Airline %>%
   geom_point() +
   theme_minimal() +
   labs(x = "Scheduled Departure Time", y = "Departure Delay",
-       title = "Departure Delay vs Scheduled Departure Time for Flights Departing SBA")
-  
+       title = "Departure Delay vs Scheduled Departure Time",
+       subtitle = "Flights Departing SBA")
 ```
 
 We can more clearly examine this by separating the flights by destination: 
-```{r, echo = F, fig.width=10}
+```{r, echo = F, fig.width = 10, fig.height= 7}
 SBA_flights_w_Airline %>%
   filter(DEP_DELAY > 0, ORIGIN == "SBA") %>%
   ggplot(aes(CRS_DEP_TIME, DEP_DELAY))+
@@ -258,39 +255,39 @@ SBA_flights_w_Airline %>%
        title = "Departure Delay vs Scheduled Departure Time for Flights Departing SBA",
        subtitle = "Separated By Destination") +
   facet_wrap("DEST")
+```
 
+# Explore All Flights
+
+Next, we examine the distribution of departure times across all our flight data. From the histogram below, we can see that the number of departures remains high throughout the majority of the day starting from 5:00 AM until 8:00 PM. At this point, the number of departures begins to steadily decrease and remains very low through the late night and early morning hours.
+```{r, echo = F, warning = F}
+ggplot(flights, aes(x = DEP_TIME)) +
+  geom_histogram(bins = 24, binwidth = 100) +
+  theme_minimal() +
+  labs(x = "Departure Time", y = "No. of Flights", title = "Historgram of Departure Times")
+```
+
+Performing the same analysis on arrival times, we see that the most arrivals occur around 12:00 PM and 8:30 PM. Like departures, the number of arrivals remains high throughout most of the day, with a sudden drop after 10:00 PM, followed by a small spike in arrivals between 12:00 AM and 1:00 AM. The lowest number of arrivals occurs between 2:00 AM and 5:00 AM. Overall, the distribution of arrival times seems to be slightly shifted to the right when compared to departure times, which makes sense since a spike in departures is expected to cause a spike in arrival later in the day.
+```{r, echo = F, warning = F}
+ggplot(flights, aes(x = ARR_TIME)) +
+  geom_histogram(bins = 24, binwidth = 100) +
+  theme_minimal() +
+  labs(x = "Arrival Time", y = "No. of Flights", title = "Historgram of Arrival Times")
 ```
 
 
-```{r}
-dep_flights <- flights %>%
-  group_by(`DEP_TIME`) %>%
-  count()
+Last, we can take a look at the median arrival and departure delays each month. We can see that March and June have the most arrival delays as well as the most departure delays (along with July) with the median flight arriving only 2 minutes ahead of schedule and departing exactly as scheduled. This is possibly due to harsh weather conditions during these months, but also could be caused by an increase in travelers. According to United Airlines, Spring Break, which usually occurs in March is the busiest time of the year for air travel^[https://www.nbcnews.com/business/travel/spring-break-travel-forecast-airlines-and-vacations-how-much-money-rcna141729]. An increase in air travel may also explain the increase in arrival delays in June, as this is when most students begin their Summer Break and may coincide with family summer vacations.
 
-ggplot(dep_flights, aes(DEP_TIME, n)) +
-  geom_line()
+In contrast, the late Fall and Winter months of September through December have the least delays for both arrivals and departures. The median flight in these months typically departs 2 minutes ahead of schedule and arrived 7 or 8 minutes ahead of schedule.
 
-```
-
-
-```{r}
-arr_flights <- flights %>%
-  group_by(`ARR_TIME`) %>%
-  count()
-
-ggplot(arr_flights, aes(ARR_TIME, n)) +
-  geom_line()
-
-
-```
-
-```{r}
-median_arr <- flights %>%
+```{r, echo = F}
+median_delays <- flights %>%
   group_by(`MONTH`) %>%
-  summarise(med = median(ARR_DELAY, na.rm = TRUE))
+  summarise("Median Arrival Delay" = median(ARR_DELAY, na.rm = TRUE), 
+            "Median Departure Delay" = median(DEP_DELAY, na.rm = TRUE))
 
-
-median_dep <- flights %>%
-  group_by(`MONTH`) %>%
-  summarise(med = median(DEP_DELAY, na.rm = TRUE))
+pander(median_delays)
 ```
+
+# Scope of Inference 
+Our data is collected from the The United States Bureau of Transportation Statistics (BTS), and specifically only examines flights from 2023 that routed through California. For example, if there was a flight directly from Seattle to Newark, this flight would not be included in our dataset as it did not route through California. This means that if we try to use our dataset to examine flights from a non-California airport, we will only see flights going to California.
