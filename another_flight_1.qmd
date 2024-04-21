@@ -22,6 +22,7 @@ When writing an academic-style paper, it is important to include an abstract. Th
 ```{r, echo = F, results='hide'}
 library("tidyverse")
 library("pander")
+library("reshape2")
 ```
 
 # Data Cleaning and EDA {#sec-section1}
